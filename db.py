@@ -48,4 +48,11 @@ class DB:
     def update_entry(self, id:int, photo:bytearray=None, cleaniness:float=None, active:bool=None, hours:str=None, review:str=None, address:str=None) -> bool:
         if id is None or id < 0:
             return False
-        
+        try:
+            with self.connectionon.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE washrooms SET cleanliness=5 WHERE id=1;", (photo, cleaniness, active, hours, review, address)
+                )
+        except Exception:
+            return False
+        return True
