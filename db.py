@@ -6,7 +6,6 @@ import inspect
 
 import psycopg
 from psycopg import sql
-from psycopg.errors import SerializationFailure, Error
 from psycopg.rows import namedtuple_row
 
 
