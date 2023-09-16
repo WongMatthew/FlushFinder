@@ -2,9 +2,10 @@ from dotenv import load_dotenv
 
 import os
 import signal
-import sys
+import inspect
 
 import psycopg
+from psycopg import sql
 from psycopg.errors import SerializationFailure, Error
 from psycopg.rows import namedtuple_row
 
@@ -22,14 +23,16 @@ class DB:
     def graceful_shutdown(self):
         self.connection.close()
 
-    def create_entry(self, photo:bytearray=None, cleaniness:float=None, active:bool=None, hours:str=None, review:str=None, address:str=None) -> bool:
+    def create_entry(self, cleaniness:float, address:str, hours:str, photo:bytearray=None, active:bool=None, review:str=None) -> bool:
+        if cleaniness < 0 or cleaniness > 5:
+            return False
         try:
             with self.connectionon.cursor() as cursor:
                 cursor.execute(
-                    "CREATE TABLE IF NOT EXISTS washrooms (id SERIAL PRIMARY KEY, photo bytea NULL, cleaniness real NOT NULL, active boolean NULL, hours text NOT NULL, review text NULL, address text NOT NULL)"
+                    "CREATE TABLE IF NOT EXISTS washrooms (id SERIAL PRIMARY KEY, cleaniness real NOT NULL, address text NOT NULL, hours text NOT NULL, photo bytea NULL, active boolean NULL, review text NULL)"
                 )
                 cursor.execute(
-                    "INSERT INTO washrooms (photo, cleaniness, active, hours, review, address) VALUES (%s %s %s %s %s %s)", (photo, cleaniness, active, hours, review, address)
+                    "INSERT INTO washrooms (cleaniness, addresss, hours, photo, active, review) VALUES (%s %s %s %s %s %s)", (cleaniness, address, hours, photo, active, review)
                 )
         except Exception:
             return False
@@ -45,13 +48,21 @@ class DB:
             return []
         return washrooms
     
-    def update_entry(self, id:int, photo:bytearray=None, cleaniness:float=None, active:bool=None, hours:str=None, review:str=None, address:str=None) -> bool:
+    def update_entry(self, id:int, cleaniness:float, address:str, hours:str, photo:bytearray=None, active:bool=None, review:str=None) -> bool:
+        args = inspect.getfullargspec(self.update_entry).args
+        args.remove("self")
+        args.remove("id")
+        filled_args = {k:v for k, v in locals().items() if k in args and v is not None}
+        arg_keys = list(filled_args.keys())
         if id is None or id < 0:
+            return False
+        if cleaniness and (cleaniness < 0 or cleaniness > 5):
             return False
         try:
             with self.connectionon.cursor() as cursor:
                 cursor.execute(
-                    "UPDATE washrooms SET cleanliness=5 WHERE id=1;", (photo, cleaniness, active, hours, review, address)
+                    sql.SQL("UPDATE washrooms SET ({})=({}) WHERE {}={}").format(sql.SQL(", ").join(map(sql.Identifier, arg_keys)), sql.SQL(", ").join(map(sql.Placeholder, arg_keys)), sql.Identifier("id"), sql.Placeholder()),
+                    filled_args, id
                 )
         except Exception:
             return False
