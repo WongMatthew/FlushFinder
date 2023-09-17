@@ -1,88 +1,61 @@
-from flask import Flask, request
-import json
-import os
-
+from flask import Flask, request, jsonify
+from db_system import DB
 
 # https://flask.palletsprojects.com/en/2.3.x/quickstart/#about-responses
 
 app = Flask(__name__)
+db = DB()
 
-"""
-Get a single washroom -- modal
-"""
-@app.get("/washroom/<wid>")
-def washroom_qeury():
-    req = request.json
+@app.route('/get_entries', methods=['GET'])
+def get_entries():
+    washrooms = db.get_entries()
+    return jsonify(washrooms)
 
-    # pass washroom id to query for washroom profile in DB
-    # TODO
+@app.route('/get_entry/<int:id>', methods=['GET'])
+def get_entry(id):
+    washroom = db.get_entry(id)
+    return jsonify(washroom)
 
-    # deserialize the washroom object
-    response = json.dumps()
-    return response
+@app.route('/create_entry', methods=['POST'])
+def create_entry():
+    data = request.json
+    cleaniness = data['cleaniness']
+    address = data['address']
+    hours = data['hours']
+    photo = data.get('photo')
+    active = data.get('active')
+    review = data.get('review')
 
-"""
-Get list of (all) washrooms -- map
-"""
-@app.get("/washroom/all")
-def all_washrooms():
-    req = request.json
-
-    # fetch all
-    # TODO
-
-
-    # deserialize into list of washroom objects
-    response = json.dumps()
-    return response
-
-
-"""
-Create a washroom submission request
-
-Update a washroom submission
-- status field indicating status of submission
-- "pending" -> 0 , "approved" -> 1, "rejected" -> 2
-"""
-@app.route("/submission/", methods=["POST", "PUT"])
-def submissions():
-    req = request.json
-
-    # make request object and pass into db orm
-    # TODO
-    if request.method == "POST":
-        pass
-
-    # query request db for washroom id, update status col
-    # TODO
+    if db.create_entry(cleaniness, address, hours, photo, active, review):
+        return jsonify({"message": "Entry created successfully"}), 201
     else:
-        if request.form['status'] == 1:
-            # update the request db, remove approved requests?
-            # create new row in washroom db
-            pass
-        elif request.form['status'] == 2:
-            # remove the washroom submission?
-            pass
+        return jsonify({"message": "Invalid data"}), 400
 
-    return "OK"
+@app.route('/update_entry/<int:id>', methods=['PUT'])
+def update_entry(id):
+    data = request.json
+    cleaniness = data.get('cleaniness')
+    address = data.get('address')
+    hours = data.get('hours')
+    photo = data.get('photo')
+    active = data.get('active')
+    review = data.get('review')
 
+    if db.update_entry(id, cleaniness,address, hours, photo, active, review):
+        return jsonify({"message": f"Entry with ID {id} updated successfully"}), 200
+    else:
+        return jsonify({"message": "Invalid data or ID"}), 400
 
-"""
-Get all washroom submission requests
-"""
-@app.get("/submission/all")
-def all_submissions():
-    # TODO
-    return "OK"
+@app.route('/review_cleaniness/<int:id>', methods=['PUT'])
+def review_cleaniness(id):
+    data = request.json
 
+    cleaniness = data.get('cleaniness')
 
-"""
-base of controller 
-"""
-@app.route("/")
-def hello_world():
-    return "<p>Hello, World!</p>"
-
+    if db.review_cleaniness(id, cleaniness):
+        return jsonify({"message": f"Entry with ID {id} updated successfully"}), 200
+    else:
+        return jsonify({"message": "Invalid data or ID"}), 400
 
 if __name__ == "__main__":
     app.run()
