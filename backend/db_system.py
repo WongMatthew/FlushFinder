@@ -89,3 +89,4 @@ class DB:
             )
         self.connection.commit()
         return True
+    
